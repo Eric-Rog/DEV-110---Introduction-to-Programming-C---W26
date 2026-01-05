@@ -1,0 +1,170 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  detect-assignment:
+    runs-on: ubuntu-latest
+    outputs:
+      week: ${{ steps.detect.outputs.week }}
+      assignment: ${{ steps.detect.outputs.assignment }}
+    steps:
+      - name: Detect Assignment Week
+        id: detect
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+
+          echo "🔍 Detecting assignment from branch: $BRANCH_NAME"
+
+          # Extract week number from branch name (e.g., assignment/week-02 or assignments/week-2)
+          if [[ "$BRANCH_NAME" =~ assignments?/week-0?([0-9]+) ]]; then
+            WEEK="${BASH_REMATCH[1]}"
+            echo "✅ Detected week: $WEEK"
+          else
+            echo "::warning::Could not detect week number from branch name"
+            echo "::warning::Expected format: assignment/week-XX or assignments/week-XX"
+            echo "::warning::Branch: $BRANCH_NAME"
+            echo "week=none" >> $GITHUB_OUTPUT
+            echo "assignment=none" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          WEEK=$(printf "%02d" $WEEK)
+
+          case $WEEK in
+            01) ASSIGNMENT="week-01-hello-github" ;;
+            02) ASSIGNMENT="week-02-calculator-lite" ;;
+            03) ASSIGNMENT="week-03-profile-card" ;;
+            *)
+              echo "::warning::Week $WEEK not configured - skipping AI review"
+              echo "week=none" >> $GITHUB_OUTPUT
+              echo "assignment=none" >> $GITHUB_OUTPUT
+              exit 0
+              ;;
+          esac
+
+          echo "week=$WEEK" >> $GITHUB_OUTPUT
+          echo "assignment=$ASSIGNMENT" >> $GITHUB_OUTPUT
+
+  ai-review:
+    needs: detect-assignment
+    runs-on: ubuntu-latest
+    if: needs.detect-assignment.outputs.week != 'none'
+
+    steps:
+      - name: Check if OpenAI API Key is configured
+        id: check-api-key
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "has_api_key=false" >> $GITHUB_OUTPUT
+            echo "⚠️ OPENAI_API_KEY not configured - AI review will be skipped"
+          else
+            echo "has_api_key=true" >> $GITHUB_OUTPUT
+            echo "✅ OPENAI_API_KEY is configured"
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed files in starter folder
+        id: changed-files
+        run: |
+          STARTER_PATH="modules/${{ needs.detect-assignment.outputs.assignment }}/starter"
+          echo "📁 Looking for changes in: $STARTER_PATH"
+
+          # Get changed .cs files only in the starter folder
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep "^${STARTER_PATH}/.*\.cs$" || true)
+
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No C# files changed in starter folder"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changed files:"
+            echo "$CHANGED_FILES"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "files<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: AI Code Review
+        if: steps.changed-files.outputs.has_changes == 'true' && steps.check-api-key.outputs.has_api_key == 'true'
+        uses: anc95/ChatGPT-CodeReview@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LANGUAGE: en-US
+          OPENAI_API_ENDPOINT: https://api.openai.com/v1
+          MODEL: gpt-4
+          PROMPT: |
+            You are a teaching assistant for an introductory C# programming course (Week ${{ needs.detect-assignment.outputs.week }}).
+            Review this code with a focus on:
+            1. Correctness and logic errors
+            2. Code style and C# best practices for beginners
+            3. Common beginner mistakes (off-by-one errors, infinite loops, null checks, etc.)
+            4. Opportunities to improve readability
+            5. Positive feedback on what the student did well
+
+            Be encouraging and educational. Provide specific suggestions with examples.
+            Keep feedback concise and actionable for a beginner programmer.
+            Focus only on the student's code in the starter folder.
+        continue-on-error: true
+
+      - name: Post submission confirmation
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const hasChanges = '${{ steps.changed-files.outputs.has_changes }}' === 'true';
+            const hasApiKey = '${{ steps.check-api-key.outputs.has_api_key }}' === 'true';
+
+            let comment = `## 🎓 Week ${{ needs.detect-assignment.outputs.week }} - Submission Received!\n\n`;
+            comment += `Great work on completing **${{ needs.detect-assignment.outputs.assignment }}**!\n\n`;
+
+            if (hasChanges && hasApiKey) {
+              comment += `✨ AI feedback has been generated and added to the Files Changed tab.\n\n`;
+            } else if (!hasApiKey) {
+              comment += `ℹ️ AI review is not configured for this repository.\n\n`;
+            } else {
+              comment += `ℹ️ No C# files were changed in the starter folder.\n\n`;
+            }
+
+            comment += `**Next Steps:**\n`;
+            comment += `1. ✅ Review test results and code quality checks above\n`;
+            comment += `2. 📝 Address any failing tests or issues\n`;
+            comment += `3. 🔧 Push updates to see new automated feedback\n`;
+            comment += `4. 💬 Wait for instructor review and approval\n\n`;
+            comment += `Keep up the excellent work! 💪`;
+
+            // Check if we already posted this comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Submission Received!')
+            );
+
+            if (!existingComment) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }

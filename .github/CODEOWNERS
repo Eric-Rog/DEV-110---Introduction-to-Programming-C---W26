@@ -1,0 +1,35 @@
+# Code Owners for DEV 110 Course Repository
+
+# This file defines who must review and approve changes to different parts of the repository
+
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+# All PRs require approval from @ZakBrinlee
+* @ZakBrinlee
+
+# Root files require instructor approval
+/*.* @ZakBrinlee
+/*.md @ZakBrinlee
+/*.sln @ZakBrinlee
+
+# GitHub configuration requires instructor approval
+/.github/ @ZakBrinlee
+
+# Workflow files require instructor approval
+/.github/workflows/ @ZakBrinlee
+
+# Documentation requires instructor approval
+/docs/ @ZakBrinlee
+
+# Module README files require instructor approval
+**/README.md @ZakBrinlee
+
+# Test files require instructor approval
+**/tests/ @ZakBrinlee
+
+# Solution files require instructor approval
+**/solution/ @ZakBrinlee
+
+# Students can freely edit their starter code, .gitignore, and .vscode
+# (These are not protected by the above rules)

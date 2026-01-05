@@ -1,0 +1,248 @@
+name: Code Quality Check
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  detect-assignment:
+    runs-on: ubuntu-latest
+    outputs:
+      week: ${{ steps.detect.outputs.week }}
+      assignment: ${{ steps.detect.outputs.assignment }}
+    steps:
+      - name: Detect Assignment Week
+        id: detect
+        run: |
+          BRANCH_NAME="${{ github.head_ref }}"
+
+          echo "🔍 Detecting assignment from branch: $BRANCH_NAME"
+
+          # Extract week number from branch name (e.g., assignment/week-02 or assignments/week-2)
+          if [[ "$BRANCH_NAME" =~ assignments?/week-0?([0-9]+) ]]; then
+            WEEK="${BASH_REMATCH[1]}"
+            echo "✅ Detected week: $WEEK"
+          else
+            echo "::warning::Could not detect week number from branch name"
+            echo "::warning::Expected format: assignment/week-XX or assignments/week-XX"
+            echo "::warning::Branch: $BRANCH_NAME"
+            echo "week=none" >> $GITHUB_OUTPUT
+            echo "assignment=none" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          WEEK=$(printf "%02d" $WEEK)
+
+          case $WEEK in
+            01) ASSIGNMENT="week-01-hello-github" ;;
+            02) ASSIGNMENT="week-02-calculator-lite" ;;
+            03) ASSIGNMENT="week-03-profile-card" ;;
+            *)
+              echo "::warning::Week $WEEK not configured - skipping code quality check"
+              echo "week=none" >> $GITHUB_OUTPUT
+              echo "assignment=none" >> $GITHUB_OUTPUT
+              exit 0
+              ;;
+          esac
+
+          echo "week=$WEEK" >> $GITHUB_OUTPUT
+          echo "assignment=$ASSIGNMENT" >> $GITHUB_OUTPUT
+
+  code-quality:
+    needs: detect-assignment
+    runs-on: ubuntu-latest
+    if: needs.detect-assignment.outputs.week != 'none'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Display Assignment Info
+        run: |
+          echo "🔍 Checking code quality for Week ${{ needs.detect-assignment.outputs.week }}"
+          echo "📝 Assignment: ${{ needs.detect-assignment.outputs.assignment }}"
+
+      - name: Restore dependencies
+        run: |
+          cd modules/${{ needs.detect-assignment.outputs.assignment }}/starter
+          dotnet restore
+
+      - name: Check code formatting
+        run: |
+          cd modules/${{ needs.detect-assignment.outputs.assignment }}/starter
+          dotnet format --verify-no-changes --verbosity diagnostic
+        continue-on-error: true
+        id: format-check
+
+      - name: Build with analyzers
+        run: |
+          cd modules/${{ needs.detect-assignment.outputs.assignment }}/starter
+          dotnet build --configuration Release /p:TreatWarningsAsErrors=false
+        continue-on-error: true
+        id: build-check
+
+      - name: Run StyleCop analysis
+        run: |
+          cd modules/${{ needs.detect-assignment.outputs.assignment }}/starter
+          dotnet build --no-incremental /p:StyleCopEnabled=true 2>&1 | tee stylecop-output.txt
+        continue-on-error: true
+        id: stylecop-check
+
+      - name: Parse StyleCop warnings
+        id: stylecop-parse
+        run: |
+          cd modules/${{ needs.detect-assignment.outputs.assignment }}/starter
+
+          if [ -f stylecop-output.txt ]; then
+            WARNING_COUNT=$(grep "warning SA" stylecop-output.txt | wc -l | tr -d ' ')
+            echo "warnings=${WARNING_COUNT}" >> $GITHUB_OUTPUT
+
+            # Extract first 5 warnings for summary
+            grep "warning SA" stylecop-output.txt | head -5 > stylecop-summary.txt 2>/dev/null || true
+          else
+            echo "warnings=0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate code quality summary
+        if: always()
+        run: |
+          echo "## 🔍 Code Quality Report - Week ${{ needs.detect-assignment.outputs.week }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Assignment:** \`${{ needs.detect-assignment.outputs.assignment }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ steps.format-check.outcome }}" == "success" ]; then
+            echo "✅ **Code Formatting:** All files are properly formatted" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Code Formatting:** Some files need formatting" >> $GITHUB_STEP_SUMMARY
+            echo "   - Run: \`dotnet format\` in the starter folder" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ steps.build-check.outcome }}" == "success" ]; then
+            echo "✅ **Build:** No compilation errors" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Build:** Compilation errors found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          WARNINGS=${{ steps.stylecop-parse.outputs.warnings }}
+          if [ "$WARNINGS" == "0" ]; then
+            echo "✅ **StyleCop:** No style warnings" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **StyleCop:** $WARNINGS style warning(s) found" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Style Guide Reminders" >> $GITHUB_STEP_SUMMARY
+          echo "- Use PascalCase for classes and methods" >> $GITHUB_STEP_SUMMARY
+          echo "- Use camelCase for variables and parameters" >> $GITHUB_STEP_SUMMARY
+          echo "- Use meaningful, descriptive names" >> $GITHUB_STEP_SUMMARY
+          echo "- Follow proper indentation (4 spaces)" >> $GITHUB_STEP_SUMMARY
+          echo "- Add braces for all control structures" >> $GITHUB_STEP_SUMMARY
+          echo "- Keep methods focused and concise" >> $GITHUB_STEP_SUMMARY
+
+      - name: Comment PR with code quality results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const formatOk = '${{ steps.format-check.outcome }}' === 'success';
+            const buildOk = '${{ steps.build-check.outcome }}' === 'success';
+            const warnings = ${{ steps.stylecop-parse.outputs.warnings }};
+
+            let comment = `## 🔍 Code Quality Check - Week ${{ needs.detect-assignment.outputs.week }}\n\n`;
+
+            // Overall status
+            if (formatOk && buildOk && warnings === 0) {
+              comment += `### ✅ All checks passed!\n\n`;
+              comment += `Your code meets all quality standards.\n\n`;
+            } else {
+              comment += `### ⚠️ Some issues found\n\n`;
+            }
+
+            // Detailed results
+            comment += `| Check | Status |\n`;
+            comment += `|-------|--------|\n`;
+            comment += `| Code Formatting | ${formatOk ? '✅ Pass' : '⚠️ Needs formatting'} |\n`;
+            comment += `| Build | ${buildOk ? '✅ Pass' : '❌ Failed'} |\n`;
+            comment += `| StyleCop | ${warnings === 0 ? '✅ No warnings' : `⚠️ ${warnings} warning(s)`} |\n`;
+            comment += `\n`;
+
+            // Specific recommendations
+            if (!formatOk || !buildOk || warnings > 0) {
+              comment += `### 💡 How to fix:\n\n`;
+
+              if (!formatOk) {
+                comment += `**Formatting issues:**\n`;
+                comment += `\`\`\`bash\n`;
+                comment += `cd modules/${{ needs.detect-assignment.outputs.assignment }}/starter\n`;
+                comment += `dotnet format\n`;
+                comment += `\`\`\`\n\n`;
+              }
+
+              if (!buildOk) {
+                comment += `**Build errors:**\n`;
+                comment += `Check the build output above for specific compilation errors.\n\n`;
+              }
+
+              if (warnings > 0) {
+                comment += `**Style warnings:**\n`;
+                comment += `Review StyleCop warnings in the workflow logs.\n`;
+                comment += `Common issues: missing documentation comments, naming conventions.\n\n`;
+              }
+            }
+
+            comment += `---\n`;
+            const now = new Date();
+            const pstString = now.toLocaleString('en-US', {
+              timeZone: 'America/Los_Angeles',
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            });
+            // Convert from "01/02/2026, 15:30:45" to "01-02-2026 15:30:45"
+            const timestamp = pstString.replace(/(\d{2})\/(\d{2})\/(\d{4}), (\d{2}:\d{2}:\d{2})/, '$1-$2-$3 $4');
+            comment += `*Run locally: \`cd modules/${{ needs.detect-assignment.outputs.assignment }}/starter && dotnet build\`*\n\n`;
+            comment += `*Last updated: ${timestamp} PST*`;
+
+            // Find and update existing bot comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Code Quality Check - Week')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: comment
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: comment
+              });
+            }

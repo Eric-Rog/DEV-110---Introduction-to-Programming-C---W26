@@ -1,0 +1,112 @@
+#!/bin/bash
+# Convenient test runner for all modules
+# Usage: ./test week-1  or  ./test week-01  or  ./test 1
+
+# Get the script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Colors for terminal output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Function to show usage
+show_usage() {
+    echo ""
+    echo -e "${CYAN}📚 Test Runner - Run tests for any week${NC}"
+    echo ""
+    echo "Usage:"
+    echo "  ./test <week-number>        Run tests for a specific week"
+    echo "  ./test all                  Run all tests"
+    echo ""
+    echo "Examples:"
+    echo "  ./test 1                    Run Week 1 tests"
+    echo "  ./test week-1               Run Week 1 tests"
+    echo "  ./test week-01              Run Week 1 tests"
+    echo "  ./test all                  Run all module tests"
+    echo ""
+}
+
+# Parse argument
+if [ $# -eq 0 ]; then
+    show_usage
+    exit 0
+fi
+
+WEEK_ARG="$1"
+
+# Normalize week number (handle week-1, week-01, or just 1)
+if [[ $WEEK_ARG == "all" ]]; then
+    echo ""
+    echo "======================================"
+    echo "  🧪 Running All Tests..."
+    echo "======================================"
+    echo ""
+
+    # Find all test projects
+    for test_dir in "$SCRIPT_DIR"/modules/week-*/tests; do
+        if [ -d "$test_dir" ]; then
+            MODULE_NAME=$(basename $(dirname "$test_dir"))
+            echo ""
+            echo -e "${CYAN}Testing: $MODULE_NAME${NC}"
+            echo "--------------------------------------"
+            bash "$SCRIPT_DIR/run-tests.sh" "$test_dir"
+            echo ""
+        fi
+    done
+    exit 0
+fi
+
+# Extract week number
+WEEK_NUM=$(echo "$WEEK_ARG" | grep -o '[0-9]\+' | head -1)
+
+if [ -z "$WEEK_NUM" ]; then
+    echo -e "${RED}❌ Invalid week number: $WEEK_ARG${NC}"
+    show_usage
+    exit 1
+fi
+
+# Pad week number to 2 digits
+WEEK_PADDED=$(printf "%02d" "$WEEK_NUM")
+
+# Find matching module directory
+MODULE_DIR=""
+for dir in "$SCRIPT_DIR"/modules/week-$WEEK_NUM-* "$SCRIPT_DIR"/modules/week-$WEEK_PADDED-*; do
+    if [ -d "$dir" ]; then
+        MODULE_DIR="$dir"
+        break
+    fi
+done
+
+if [ -z "$MODULE_DIR" ]; then
+    echo -e "${RED}❌ Could not find module for week $WEEK_NUM${NC}"
+    echo ""
+    echo "Available modules:"
+    for dir in "$SCRIPT_DIR"/modules/week-*/; do
+        if [ -d "$dir" ]; then
+            echo "  - $(basename "$dir")"
+        fi
+    done
+    echo ""
+    exit 1
+fi
+
+TEST_DIR="$MODULE_DIR/tests"
+
+if [ ! -d "$TEST_DIR" ]; then
+    echo -e "${RED}❌ Tests not found: $TEST_DIR${NC}"
+    exit 1
+fi
+
+# Run tests with clean output
+MODULE_NAME=$(basename "$MODULE_DIR")
+echo ""
+echo "======================================"
+echo -e "  ${CYAN}Testing: $MODULE_NAME${NC}"
+echo "======================================"
+echo ""
+
+bash "$SCRIPT_DIR/run-tests.sh" "$TEST_DIR"

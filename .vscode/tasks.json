@@ -1,0 +1,114 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["build", "${workspaceFolder}"],
+      "problemMatcher": "$msCompile",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "test (clean output)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/run-tests.sh", "${fileDirname}/../tests"],
+      "problemMatcher": [],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "test (standard output)",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["test", "${fileDirname}/../tests"],
+      "problemMatcher": "$msCompile",
+      "group": "test"
+    },
+    {
+      "label": "test: Week 1",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/test", "1"],
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "test: Week 2",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/test", "2"],
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "test: Week 3",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/test", "3"],
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "test: All Weeks",
+      "type": "shell",
+      "command": "bash",
+      "args": ["${workspaceFolder}/test", "all"],
+      "problemMatcher": [],
+      "group": "test",
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "format",
+      "command": "dotnet",
+      "type": "process",
+      "args": ["format", "${workspaceFolder}"],
+      "problemMatcher": []
+    }
+  ]
+}
