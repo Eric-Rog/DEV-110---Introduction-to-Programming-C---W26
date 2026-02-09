@@ -82,10 +82,14 @@ Desktop.ini
 
 # GitHub files
 .github
+.github/copilot-instructions.md
 
-# Sensitive files (keep student work private)
+# Sensitive files
 **/solution/
 
-# Exception: Allow solution directories in labs
+# Exception: Allow only Program.cs and .csproj files in labs solution folders
 !labs/**/solution/
+labs/**/solution/**
+!labs/**/solution/Program.cs
+!labs/**/solution/*.csproj
 
