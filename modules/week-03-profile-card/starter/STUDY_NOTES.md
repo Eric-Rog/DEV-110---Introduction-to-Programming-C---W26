@@ -148,7 +148,7 @@ Answer: Inputted cases on either side of the limit and verified the asociated re
 
 ## Time Spent
 
-**Total time:** [3 hours]
+**Total time:** [3 hours + 0.5 hours git setup and pushing]
 
 **Breakdown:**
 
