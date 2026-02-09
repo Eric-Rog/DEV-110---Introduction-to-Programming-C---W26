@@ -130,7 +130,7 @@ More googling and testing fixed this though.
 
 ## Time Spent
 
-**Total time:** [8.5 hours]
+**Total time:** [8.5 hours + +3 extra hours relearning git and adjusting the code that somehow broke from when i last tested it.]
 
 **Breakdown:**
 

@@ -9,22 +9,21 @@ public class Program
 
         // Declare variables for storing user input (use descriptive names)
         // Hint: You'll need variables for two numbers, user name, and calculation choice
-
-        double num1, num2;
+        double num1 = 67;
+        double num2 = 67;
         int validCalcs = 0;
         int totalCalcs = 0;
 
         // TODO: Ask for user's name (string) and greet them
         // Example: "Enter your name: " then "Hello, [name]!"
-
         Console.WriteLine("Please enter your name: ");
-        string user = Console.ReadLine();
+        string user = "";
+        user = Console.ReadLine();
         Console.WriteLine("\nHello " + user + ", nice to meet you brotato chip!");
 
         // TODO: Ask if they want to use decimals (bool)
         // Example: "Use decimal precision? (yes/no): "
         // Store as boolean (true for yes, false for no)
-
         Console.WriteLine("\nWould you like to use decimal precision " + user + "? (Yes/No)");
 
         // default decimal prefence is off @ F0
@@ -50,7 +49,6 @@ public class Program
             // TODO: Prompt user for first number (double or int based on choice)
             // If decimals: use double.Parse()
             // If no decimals: use int.Parse() then cast to double
-
             Console.WriteLine("\nEnter first number: ");
             if (decmialPref == true)
             {
@@ -68,18 +66,17 @@ public class Program
             if (decmialPref == true)
             {
                 //parses through direct to double
-                num2 = double.Parse(Console.ReadLine().ToString(dPVal));
+                num2 = double.Parse(Console.ReadLine());
             }
             else
             {
                 //parses to int then casts to double
-                num2 = (double)int.Parse(Console.ReadLine());
+                num2 = Convert.ToDouble(int.Parse(Console.ReadLine()));
             }
 
             // TODO: Display results with proper formatting
             // Show 2 decimal places: {value:F2}
             // Include descriptive labels for each operation
-
             Console.WriteLine("\nResults:");
 
             // TODO: Calculate ALL arithmetic operations:
@@ -100,7 +97,6 @@ public class Program
 
             // TODO: Check if second number is zero BEFORE dividing
             // Use if statement: if (num2 == 0) { show error } else { calculate }
-
             // - quotient (division: /)
             if (num2 != 0)
             {
@@ -160,7 +156,6 @@ public class Program
 
         // TODO: Count total calculations performed (int)
         // Display: "Performed [count] calculations for [name]!"
-
         Console.WriteLine("\nYo, " + user + " peep these stats twin:");
         Console.WriteLine("Successful Calculations : " + validCalcs);
         Console.WriteLine("Total Calculations      : " + totalCalcs);
