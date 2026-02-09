@@ -154,6 +154,8 @@ Answer: Understanding data types took the longest because I struggled a lot with
 Answer: No
 Actually yes, i just did the tests and everything fails. I'm guessing its because everything is in a while loop which maybe the testing program doesnt know how to interpret (there is an extra user input afterwards that breaks the loop)
 
+I would also take the time to learn and understand git earlier rather than delaying it and having to take extra time catching up later.
+
 **How does this assignment prepare you for more complex programs?**
 [Why are these skills important for future programming tasks?]
 
