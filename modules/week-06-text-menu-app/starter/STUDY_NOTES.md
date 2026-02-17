@@ -75,11 +75,11 @@ Answer:
 
 ## Time Spent
 
-**Total time:** [X hours]
+**Total time:** [2 hours]
 
 **Breakdown:**
 
-- Planning the loops: [X hours]
+- Planning the loops: [2 hours]
 - Input validation: [X hours]
 - String formatting: [X hours]
 - Testing and debugging: [X hours]
@@ -87,13 +87,13 @@ Answer:
 
 **Most time-consuming part:** [Which aspect took the longest and why?]
 
-Answer:
+Answer: Everything because I was exhausted dealing with other things today and didnt have time to focus on programming. Legitimently forgot a readline the first time doing the while loop and went to run it and was confused why it was printing lines nonstop.
 
 ## Reflection
 
 **What would you do differently next time?**
 
-Answer:
+Answer: Not do as I answered above.
 
 **How did using three different loop types improve your understanding of repetition?**
 
